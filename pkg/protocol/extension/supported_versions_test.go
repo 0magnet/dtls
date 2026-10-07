@@ -6,7 +6,7 @@ package extension
 import (
 	"testing"
 
-	"github.com/pion/dtls/v3/pkg/protocol"
+	"github.com/0magnet/dtls/v3/pkg/protocol"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -4,8 +4,8 @@
 package signaturehash
 
 import (
-	"github.com/pion/dtls/v3/pkg/crypto/hash"
-	"github.com/pion/dtls/v3/pkg/crypto/signature"
+	"github.com/0magnet/dtls/v3/pkg/crypto/hash"
+	"github.com/0magnet/dtls/v3/pkg/crypto/signature"
 )
 
 // Algorithms13 returns signature algorithms compatible with DTLS 1.3. This.

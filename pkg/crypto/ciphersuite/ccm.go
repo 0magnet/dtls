@@ -6,8 +6,8 @@ package ciphersuite
 import (
 	"crypto/aes"
 
-	"github.com/pion/dtls/v3/pkg/crypto/ccm"
-	"github.com/pion/dtls/v3/pkg/protocol/recordlayer"
+	"github.com/0magnet/dtls/v3/pkg/crypto/ccm"
+	"github.com/0magnet/dtls/v3/pkg/protocol/recordlayer"
 )
 
 // CCMTagLen is the length of Authentication Tag.

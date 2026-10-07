@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pion/dtls/v3/internal/ciphersuite"
-	dtlsnet "github.com/pion/dtls/v3/pkg/net"
+	"github.com/0magnet/dtls/v3/internal/ciphersuite"
+	dtlsnet "github.com/0magnet/dtls/v3/pkg/net"
 	"github.com/pion/transport/v5/dpipe"
 	"github.com/pion/transport/v5/test"
 	"github.com/stretchr/testify/assert"

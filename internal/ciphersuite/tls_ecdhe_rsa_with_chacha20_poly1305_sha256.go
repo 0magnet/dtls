@@ -4,7 +4,7 @@
 package ciphersuite
 
 import (
-	"github.com/pion/dtls/v3/pkg/crypto/clientcertificate"
+	"github.com/0magnet/dtls/v3/pkg/crypto/clientcertificate"
 )
 
 // TLSEcdheRsaWithChacha20Poly1305Sha256 represents a TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 CipherSuite.

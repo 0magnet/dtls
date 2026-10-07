@@ -7,9 +7,9 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/pion/dtls/v3/pkg/protocol"
-	"github.com/pion/dtls/v3/pkg/protocol/handshake"
-	"github.com/pion/dtls/v3/pkg/protocol/recordlayer"
+	"github.com/0magnet/dtls/v3/pkg/protocol"
+	"github.com/0magnet/dtls/v3/pkg/protocol/handshake"
+	"github.com/0magnet/dtls/v3/pkg/protocol/recordlayer"
 )
 
 const (

@@ -6,8 +6,8 @@ package dtls
 import (
 	"testing"
 
-	"github.com/pion/dtls/v3/internal/ciphersuite"
-	"github.com/pion/dtls/v3/pkg/protocol/handshake"
+	"github.com/0magnet/dtls/v3/internal/ciphersuite"
+	"github.com/0magnet/dtls/v3/pkg/protocol/handshake"
 	"github.com/stretchr/testify/assert"
 )
 

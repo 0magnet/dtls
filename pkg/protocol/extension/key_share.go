@@ -4,7 +4,7 @@
 package extension
 
 import (
-	"github.com/pion/dtls/v3/pkg/crypto/elliptic"
+	"github.com/0magnet/dtls/v3/pkg/crypto/elliptic"
 	"golang.org/x/crypto/cryptobyte"
 )
 

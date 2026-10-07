@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pion/dtls/v3/internal/ciphersuite"
-	"github.com/pion/dtls/v3/pkg/protocol/alert"
-	"github.com/pion/dtls/v3/pkg/protocol/handshake"
+	"github.com/0magnet/dtls/v3/internal/ciphersuite"
+	"github.com/0magnet/dtls/v3/pkg/protocol/alert"
+	"github.com/0magnet/dtls/v3/pkg/protocol/handshake"
 	"github.com/pion/logging"
 	"github.com/pion/transport/v5/test"
 	"github.com/stretchr/testify/assert"

@@ -9,8 +9,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/pion/dtls/v3/internal/ciphersuite/types"
-	"github.com/pion/dtls/v3/pkg/protocol"
+	"github.com/0magnet/dtls/v3/internal/ciphersuite/types"
+	"github.com/0magnet/dtls/v3/pkg/protocol"
 )
 
 //nolint:err113

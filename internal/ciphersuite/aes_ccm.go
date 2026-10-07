@@ -9,10 +9,10 @@ import (
 	"hash"
 	"sync/atomic"
 
-	"github.com/pion/dtls/v3/pkg/crypto/ciphersuite"
-	"github.com/pion/dtls/v3/pkg/crypto/clientcertificate"
-	"github.com/pion/dtls/v3/pkg/crypto/prf"
-	"github.com/pion/dtls/v3/pkg/protocol/recordlayer"
+	"github.com/0magnet/dtls/v3/pkg/crypto/ciphersuite"
+	"github.com/0magnet/dtls/v3/pkg/crypto/clientcertificate"
+	"github.com/0magnet/dtls/v3/pkg/crypto/prf"
+	"github.com/0magnet/dtls/v3/pkg/protocol/recordlayer"
 )
 
 // AesCcm is a base class used by multiple AES-CCM Ciphers.

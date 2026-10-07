@@ -4,8 +4,8 @@
 package ciphersuite
 
 import (
-	"github.com/pion/dtls/v3/pkg/crypto/ciphersuite"
-	"github.com/pion/dtls/v3/pkg/crypto/clientcertificate"
+	"github.com/0magnet/dtls/v3/pkg/crypto/ciphersuite"
+	"github.com/0magnet/dtls/v3/pkg/crypto/clientcertificate"
 )
 
 // Aes256Ccm is a base class used by multiple AES-CCM Ciphers.

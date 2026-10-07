@@ -6,7 +6,7 @@ package handshake
 import (
 	"testing"
 
-	"github.com/pion/dtls/v3/internal/ciphersuite/types"
+	"github.com/0magnet/dtls/v3/internal/ciphersuite/types"
 	"github.com/stretchr/testify/assert"
 )
 

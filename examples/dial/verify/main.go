@@ -11,8 +11,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/pion/dtls/v3"
-	"github.com/pion/dtls/v3/examples/util"
+	"github.com/0magnet/dtls/v3"
+	"github.com/0magnet/dtls/v3/examples/util"
 )
 
 func main() {
