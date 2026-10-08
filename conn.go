@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/pion/dtls/v3/internal/closer"
+	"github.com/pion/dtls/v3/internal/ctxconn"
 	"github.com/pion/dtls/v3/pkg/crypto/elliptic"
 	"github.com/pion/dtls/v3/pkg/crypto/signaturehash"
 	"github.com/pion/dtls/v3/pkg/protocol"
@@ -237,7 +238,7 @@ func createConn(
 
 	conn := &Conn{
 		rAddr:                   rAddr,
-		nextConn:                netctx.NewPacketConn(nextConn),
+		nextConn:                ctxconn.New(nextConn),
 		handshakeConfig:         handshakeConfig,
 		fragmentBuffer:          newFragmentBuffer(),
 		handshakeCache:          newHandshakeCache(),
