@@ -363,24 +363,24 @@ func flightTestPipe(
 	chB := make(chan recvHandshakeState)
 
 	return &flightTestConn{
-			handshakeCache: ca,
-			otherEndCache:  cb,
-			recv:           chA,
-			otherEndRecv:   chB,
-			done:           ctx.Done(),
-			filter:         clientEndpoint.Filter,
-			retransmit:     clientEndpoint.Retransmit,
-			delay:          clientEndpoint.Delay,
-		}, &flightTestConn{
-			handshakeCache: cb,
-			otherEndCache:  ca,
-			recv:           chB,
-			otherEndRecv:   chA,
-			done:           ctx.Done(),
-			filter:         serverEndpoint.Filter,
-			retransmit:     serverEndpoint.Retransmit,
-			delay:          serverEndpoint.Delay,
-		}
+		handshakeCache: ca,
+		otherEndCache:  cb,
+		recv:           chA,
+		otherEndRecv:   chB,
+		done:           ctx.Done(),
+		filter:         clientEndpoint.Filter,
+		retransmit:     clientEndpoint.Retransmit,
+		delay:          clientEndpoint.Delay,
+	}, &flightTestConn{
+		handshakeCache: cb,
+		otherEndCache:  ca,
+		recv:           chB,
+		otherEndRecv:   chA,
+		done:           ctx.Done(),
+		filter:         serverEndpoint.Filter,
+		retransmit:     serverEndpoint.Retransmit,
+		delay:          serverEndpoint.Delay,
+	}
 }
 
 type flightTestConn struct {
