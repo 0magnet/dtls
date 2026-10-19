@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pion/dtls/v4/internal/ctxconn"
 	dtlserrors "github.com/pion/dtls/v4/internal/errors"
 	dtlsflight "github.com/pion/dtls/v4/internal/flight"
 	dtlshandshake "github.com/pion/dtls/v4/internal/handshake"
@@ -529,7 +530,7 @@ func (c *Conn) AddPath(socket net.PacketConn) (*Path, error) {
 			return nil, errPathInUse
 		}
 	}
-	path := transport.add(netctx.NewPacketConn(socket))
+	path := transport.add(ctxconn.New(socket))
 	go path.read()
 
 	return &Path{pathSocket: path}, nil

@@ -18,6 +18,7 @@ import (
 	dtlsciphersuite "github.com/pion/dtls/v4/internal/ciphersuite"
 	"github.com/pion/dtls/v4/internal/closer"
 	dtlsconfig "github.com/pion/dtls/v4/internal/config"
+	"github.com/pion/dtls/v4/internal/ctxconn"
 	"github.com/pion/dtls/v4/internal/ech"
 	dtlserrors "github.com/pion/dtls/v4/internal/errors"
 	dtlsflight "github.com/pion/dtls/v4/internal/flight"
@@ -307,7 +308,7 @@ func newConn(nextConn net.PacketConn, rAddr net.Addr, configValues connConfigVal
 	}
 	dtlsstate.CommonState(conn.state).ServerName = handshakeConfig.ServerName
 	if nextConn != nil {
-		conn.nextConn = netctx.NewPacketConn(nextConn)
+		conn.nextConn = ctxconn.New(nextConn)
 		conn.packetConn, _ = nextConn.(*udp.PacketConn)
 		if conn.cidPathMigrationPolicy == CIDPathMigrationRRC || conn.cidPathMigrationPolicy == CIDPathMigrationUnsafe {
 			conn.nextConn = newPathTransport(conn, conn.nextConn)
