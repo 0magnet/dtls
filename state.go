@@ -112,6 +112,23 @@ type serializedState struct {
 
 var errCipherSuiteNotSet = &InternalError{Err: errors.New("cipher suite not set")} //nolint:err113
 
+func (s *serializedState) clone() serializedState {
+	state := *s
+	state.MasterSecret = bytes.Clone(s.MasterSecret)
+	state.IdentityHint = bytes.Clone(s.IdentityHint)
+	state.SessionID = bytes.Clone(s.SessionID)
+	state.LocalConnectionID = bytes.Clone(s.LocalConnectionID)
+	state.RemoteConnectionID = bytes.Clone(s.RemoteConnectionID)
+	if s.PeerCertificates != nil {
+		state.PeerCertificates = make([][]byte, len(s.PeerCertificates))
+		for i, cert := range s.PeerCertificates {
+			state.PeerCertificates[i] = bytes.Clone(cert)
+		}
+	}
+
+	return state
+}
+
 func (s *State) clone() (*State, error) {
 	serialized, err := s.serialize()
 	if err != nil {
@@ -234,7 +251,11 @@ func (s *State) initCipherSuite() error {
 }
 
 // MarshalBinary exports a snapshot of an established connection.
-// Resume the exported state only once; duplicating it reuses cryptographic nonces.
+// It does not stop the source connection or refresh the snapshot's counters.
+// Restoring a snapshot is unsafe if the source sends further records after the
+// snapshot was taken, or if any copy is restored more than once. This can reuse
+// encryption nonces and compromise confidentiality and integrity.
+// See ResumeWithOptions for the safety requirements and the recommended v4 API.
 func (s *State) MarshalBinary() ([]byte, error) {
 	serialized, err := s.export()
 	if err != nil {

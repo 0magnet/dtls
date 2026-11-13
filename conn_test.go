@@ -2437,22 +2437,28 @@ func TestMultipleHelloVerifyRequest(t *testing.T) {
 		assert.NoError(t, ca.Close())
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	deadline, _ := ctx.Deadline()
+	assert.NoError(t, cb.SetReadDeadline(deadline))
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	defer wg.Wait()
 	go func() {
 		defer wg.Done()
-		_, _ = testClient(ctx, dtlsnet.PacketConnFromConn(ca), ca.RemoteAddr(), &Config{}, false)
+		_, _ = testClient(ctx, dtlsnet.PacketConnFromConn(ca), ca.RemoteAddr(), &Config{
+			FlightInterval: 100 * time.Millisecond,
+		}, false)
 	}()
 
 	for i, cookie := range cookies {
 		// read client hello
 		resp := make([]byte, 1024)
 		n, err := cb.Read(resp)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		record := &recordlayer.RecordLayer{}
 		assert.NoError(t, record.Unmarshal(resp[:n]))
@@ -3606,46 +3612,95 @@ func TestFragmentBuffer_Retransmission(t *testing.T) {
 	assert.True(t, isRetransmission)
 }
 
+func TestDiscardLatePlaintextRecords(t *testing.T) {
+	conn := &Conn{log: logging.NewDefaultLoggerFactory().NewLogger("dtls")}
+	conn.setRemoteEpoch(1)
+	conn.handshakeCompletedSuccessfully.Store(true)
+	for _, content := range []protocol.Content{
+		&alert.Alert{Level: alert.Warning, Description: alert.CloseNotify},
+		&protocol.ApplicationData{Data: []byte("plaintext")},
+		&protocol.ChangeCipherSpec{},
+	} {
+		record := &recordlayer.RecordLayer{
+			Header: recordlayer.Header{Version: protocol.Version1_2}, Content: content,
+		}
+		raw, err := record.Marshal()
+		if !assert.NoError(t, err) {
+			return
+		}
+		for _, packet := range [][]byte{raw, append(bytes.Clone(raw[:recordlayer.FixedHeaderSize]), 0)} {
+			hs, retransmit, response, err := conn.handleIncomingPacket(t.Context(), packet, nil, false)
+			assert.NoError(t, err)
+			assert.Nil(t, response)
+			assert.False(t, hs)
+			assert.False(t, retransmit)
+		}
+	}
+}
+
 func TestConnectionState(t *testing.T) {
 	ca, cb := dpipe.Pipe()
+	defer func() { _ = ca.Close(); _ = cb.Close() }()
+	certificate, err := selfsign.GenerateSelfSigned()
+	if !assert.NoError(t, err) {
+		return
+	}
+	var client, server *Conn
+	verify := func(conn *Conn) error {
+		snapshot, ok := conn.ConnectionState()
+		if !assert.True(t, ok) {
+			return errCipherSuiteNotSet
+		}
+		if len(snapshot.PeerCertificates) > 0 {
+			original := snapshot.PeerCertificates[0][0]
+			snapshot.PeerCertificates[0][0] ^= 1
+			fresh, _ := conn.ConnectionState()
+			assert.Equal(t, original, fresh.PeerCertificates[0][0])
+		}
 
-	// Setup client
-	clientCfg := &Config{}
-	clientCert, err := selfsign.GenerateSelfSigned()
-	assert.NoError(t, err)
-
-	clientCfg.Certificates = []tls.Certificate{clientCert}
-	clientCfg.InsecureSkipVerify = true
-	client, err := Client(dtlsnet.PacketConnFromConn(ca), ca.RemoteAddr(), clientCfg)
-	assert.NoError(t, err)
-	defer func() {
-		_ = client.Close()
-	}()
-
+		return nil
+	}
+	client, err = Client(dtlsnet.PacketConnFromConn(ca), ca.RemoteAddr(), &Config{
+		InsecureSkipVerify:    true,
+		VerifyConnection:      func(*State) error { return verify(client) },
+		VerifyPeerCertificate: func([][]byte, [][]*x509.Certificate) error { return verify(client) },
+	})
+	if !assert.NoError(t, err) {
+		return
+	}
+	defer func() { _ = client.Close() }()
+	server, err = Server(dtlsnet.PacketConnFromConn(cb), cb.RemoteAddr(), &Config{
+		Certificates:     []tls.Certificate{certificate},
+		VerifyConnection: func(*State) error { return verify(server) },
+	})
+	if !assert.NoError(t, err) {
+		return
+	}
+	defer func() { _ = server.Close() }()
 	_, ok := client.ConnectionState()
 	assert.False(t, ok)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
-	errorChannel := make(chan error)
-	go func() {
-		errC := client.HandshakeContext(ctx)
-		errorChannel <- errC
-	}()
-
-	// Setup server
-	server, err := testServer(ctx, dtlsnet.PacketConnFromConn(cb), cb.RemoteAddr(), &Config{}, true)
-	assert.NoError(t, err)
-
-	defer func() {
-		_ = server.Close()
-	}()
-
-	err = <-errorChannel
-	assert.NoError(t, err)
-
-	_, ok = client.ConnectionState()
-	assert.True(t, ok)
+	done := make(chan error, 2)
+	go func() { done <- client.HandshakeContext(ctx) }()
+	go func() { done <- server.HandshakeContext(ctx) }()
+	poll := time.NewTicker(time.Millisecond)
+	defer poll.Stop()
+	for completed := 0; completed < 2; {
+		select {
+		case err := <-done:
+			assert.NoError(t, err)
+			completed++
+		case <-poll.C:
+			_, _ = client.ConnectionState()
+			_, _ = server.ConnectionState()
+		}
+	}
+	for _, conn := range []*Conn{client, server} {
+		_, ok = conn.ConnectionState()
+		assert.True(t, ok)
+		assert.Nil(t, conn.handshakeSnapshot.Load())
+	}
 }
 
 func TestMultiHandshake(t *testing.T) {
@@ -3880,4 +3935,100 @@ func TestEarlyApplicationDataDoesNotBlockFinished(t *testing.T) {
 			assert.NotNil(t, finished[0], "Finished must reach the handshake parser")
 		})
 	}
+}
+
+func TestReadReturnsDataReceivedBeforeCloseNotify(t *testing.T) {
+	// Read used to pick randomly between the closed signal and pending data
+	// once both were ready, so repeat to make a regression fail reliably.
+	for range 16 {
+		client, server, err := pipeMemory()
+		assert.NoError(t, err)
+
+		_, err = client.Write([]byte("last"))
+		assert.NoError(t, err)
+		assert.NoError(t, client.Close())
+
+		// Do not Read until the server has processed the close_notify, so the
+		// record and the closure are both pending when Read is called.
+		assert.Eventually(t, server.isConnectionClosed, 5*time.Second, time.Millisecond)
+
+		buf := make([]byte, 16)
+		n, err := server.Read(buf)
+		assert.NoError(t, err)
+		assert.Equal(t, "last", string(buf[:n]))
+
+		_, err = server.Read(buf)
+		assert.ErrorIs(t, err, io.EOF)
+		assert.NoError(t, server.Close())
+	}
+}
+
+func TestReadDropsQueuedDataAfterLocalClose(t *testing.T) {
+	for range 16 {
+		client, server, err := pipeMemory()
+		assert.NoError(t, err)
+
+		_, err = client.Write([]byte("last"))
+		assert.NoError(t, err)
+		assert.Eventually(t, func() bool { return len(server.decrypted) == 1 }, 5*time.Second, time.Millisecond)
+
+		assert.NoError(t, server.Close())
+		_, err = server.Read(make([]byte, 16))
+		assert.ErrorIs(t, err, io.EOF)
+		assert.NoError(t, client.Close())
+	}
+}
+
+func TestReadDropsQueuedDataAfterFatalAlert(t *testing.T) {
+	// Read used to pick randomly between the closed signal and pending data,
+	// so repeat to make a regression fail reliably.
+	for range 16 {
+		client, server, err := pipeMemory()
+		assert.NoError(t, err)
+
+		_, err = client.Write([]byte("last"))
+		assert.NoError(t, err)
+		assert.NoError(t, client.notify(context.Background(), alert.Fatal, alert.InternalError))
+		assert.Eventually(t, server.isConnectionClosed, 5*time.Second, time.Millisecond)
+
+		_, err = server.Read(make([]byte, 16))
+		assert.ErrorIs(t, err, io.EOF)
+		assert.NoError(t, server.Close())
+		_ = client.Close()
+	}
+}
+
+func TestReadAfterCloseNotifyWithNothingQueued(t *testing.T) {
+	client, server, err := pipeMemory()
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, client.Close())
+		assert.NoError(t, server.Close())
+	}()
+
+	// close_notify arrived but no record was queued before it.
+	server.closeNotifyReceived.Store(true)
+	_, err = server.readAfterClose(make([]byte, 16))
+	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestCopyDecrypted(t *testing.T) {
+	buf := make([]byte, 4)
+
+	n, handled, err := copyDecrypted(buf, []byte("ab"))
+	assert.True(t, handled)
+	assert.NoError(t, err)
+	assert.Equal(t, "ab", string(buf[:n]))
+
+	_, handled, err = copyDecrypted(buf, []byte("too long"))
+	assert.True(t, handled)
+	assert.ErrorIs(t, err, errBufferTooSmall)
+
+	readErr := errors.New("read error") //nolint:err113
+	_, handled, err = copyDecrypted(buf, readErr)
+	assert.True(t, handled)
+	assert.ErrorIs(t, err, readErr)
+
+	_, handled, _ = copyDecrypted(buf, 42)
+	assert.False(t, handled)
 }
